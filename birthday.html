@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>生日快樂！拼圖挑戰</title>
+    <style>
+        :root {
+            --primary-color: #FF6B6B;
+            --secondary-color: #4ECDC4;
+            --bg-color: #f7f9fc;
+            --text-color: #2d3436;
+            --grid-size: 3; /* 改成 3x3 */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+            text-shadow: 2px 2px 0px white;
+        }
+        
+        p.subtitle {
+            margin-top: 0;
+            color: #666;
+            font-size: 1rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #level-indicator {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: var(--secondary-color);
+            background: white;
+            padding: 8px 25px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .game-container {
+            background: white;
+            padding: 15px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            position: relative;
+            width: 90vw;
+            max-width: 400px; 
+            aspect-ratio: 1 / 1; 
+        }
+
+        #puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-size), 1fr);
+            grid-template-rows: repeat(var(--grid-size), 1fr);
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--secondary-color);
+            background-color: #eee;
+            gap: 2px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            overflow: hidden;
+            touch-action: none; /* 優化：防止手機滑動時頁面捲動 */
+        }
+
+        .tile {
+            width: 100%;
+            height: 100%;
+            /* 計算背景圖大小，確保切圖正確 */
+            background-size: calc(100% * var(--grid-size) + var(--grid-size) * 2px) calc(100% * var(--grid-size) + var(--grid-size) * 2px);
+            background-repeat: no-repeat;
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+            position: relative;
+        }
+        
+        .tile:active {
+            transform: scale(0.95);
+        }
+
+        .tile.empty {
+            background: transparent !important;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* 勝利畫面 */
+        #victory-overlay, #final-celebration {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            text-align: center;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        #victory-overlay.active, #final-celebration.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #victory-overlay h2, #final-celebration h2 {
+            color: var(--primary-color);
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+        }
+        
+        #final-celebration p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: var(--text-color);
+        }
+
+        button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 25px;
+            font-weight: bold;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            background-color: #3dbdb4;
+        }
+        
+        button.btn-love {
+            background-color: var(--primary-color);
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🧩 生日拼圖大挑戰</h1>
+    <p class="subtitle">將這些美好的回憶拼回來吧！</p>
+    <div id="level-indicator">Level 1 / 5</div>
+
+    <div class="game-container">
+        <div id="puzzle-board">
+            </div>
+    </div>
+
+    <div id="victory-overlay">
+        <h2>🎉 成功解鎖！</h2>
+        <p>太厲害了！<br>下一張回憶是什麼呢？</p>
+        <button id="next-level-btn">進入下一關 ➡️</button>
+    </div>
+
+    <div id="final-celebration">
+        <h2>🎂 生日快樂！ 🎂</h2>
+        <p>
+            所有的拼圖都完成了！<br>
+            你擁有很多美好的畫面跟回憶。<br>
+            你的故事很長，而我希望未來的篇章，都能和你一起寫。<br>
+            生日快樂，我的男孩！願你一直快樂，一直自由。<br>
+            <br>
+            <strong>永遠愛你！💖</strong>
+        </p>
+        <button class="btn-love" onclick="location.reload()">再玩一次 🔄</button>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        const GRID_SIZE = 3; // 設定為 3x3
+        
+        // ⚠️⚠️⚠️ 請在這裡貼上你的圖片網址 ⚠️⚠️⚠️
+        const levels = [
+            "https://i.postimg.cc/VL5gFMG7/1-png.png",
+            "https://i.postimg.cc/gk5DtJ1w/2-png.png",
+            "https://i.postimg.cc/fTFKqL19/3-png.png",
+            "https://i.postimg.cc/YqV3D9TL/4-png.png",
+            "https://i.postimg.cc/tCf5vT8Z/5-png.png"
+        ];
+
+        // ✨ 優化：預先載入圖片功能，防止切換關卡時閃爍
+        levels.forEach(url => {
+            const img = new Image();
+            img.src = url;
+        });
+
+        let currentLevel = 0;
+        let boardState = []; 
+        let emptyTileIndex = { row: GRID_SIZE - 1, col: GRID_SIZE - 1 };
+        let isSolved = false;
+
+        const boardElement = document.getElementById('puzzle-board');
+        const levelText = document.getElementById('level-indicator');
+        const victoryOverlay = document.getElementById('victory-overlay');
+        const finalCelebration = document.getElementById('final-celebration');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+
+        function initGame() {
+            victoryOverlay.classList.remove('active');
+            isSolved = false;
+            levelText.innerText = `Level ${currentLevel + 1} / ${levels.length}`;
+            
+            if(levels[currentLevel].includes("在此貼上")) {
+                // 如果你的圖片網址貼錯，會跳出這個提醒
+                alert("⚠️ 寶貝提醒：請記得把圖片網址貼進程式碼裡面喔！不然會看不到圖");
+            }
+
+            createBoard();
+            // 3x3 比較簡單，稍微打亂即可
+            setTimeout(shuffleBoard, 500); 
+        }
+
+        function createBoard() {
+            boardElement.innerHTML = '';
+            boardState = [];
+
+            for (let row = 0; row < GRID_SIZE; row++) {
+                boardState[row] = [];
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    
+                    const id = row * GRID_SIZE + col;
+                    tile.dataset.id = id;
+
+                    if (row === GRID_SIZE - 1 && col === GRID_SIZE - 1) {
+                        tile.classList.add('empty');
+                        boardState[row][col] = null;
+                        emptyTileIndex = { row, col };
+                    } else {
+                        tile.style.backgroundImage = `url('${levels[currentLevel]}')`;
+                        const bgX = (col / (GRID_SIZE - 1)) * 100;
+                        const bgY = (row / (GRID_SIZE - 1)) * 100;
+                        tile.style.backgroundPosition = `${bgX}% ${bgY}%`;
+                        boardState[row][col] = tile;
+                    }
+                    tile.onclick = () => moveTileByClick(tile); 
+                    boardElement.appendChild(tile);
+                }
+            }
+        }
+        
+        function moveTileByClick(tile) {
+            if(isSolved || tile.classList.contains('empty')) return;
+            
+            let r, c;
+            // 尋找被點擊方塊的座標
+            for(let row=0; row<GRID_SIZE; row++){
+                for(let col=0; col<GRID_SIZE; col++){
+                    if(boardState[row][col] === tile) {
+                        r = row;
+                        c = col;
+                        break;
+                    }
+                }
+            }
+            moveTile(r, c);
+        }
+
+        function moveTile(row, col) {
+            const dRow = Math.abs(row - emptyTileIndex.row);
+            const dCol = Math.abs(col - emptyTileIndex.col);
+
+            // 如果在空白格旁邊
+            if (dRow + dCol === 1) {
+                const tempTile = boardState[row][col];
+                boardState[row][col] = null;
+                boardState[emptyTileIndex.row][emptyTileIndex.col] = tempTile;
+                
+                // 重繪
+                redrawBoard();
+
+                emptyTileIndex = { row: row, col: col };
+                checkWin();
+            }
+        }
+        
+        function redrawBoard() {
+            boardElement.innerHTML = '';
+            for(let r=0; r<GRID_SIZE; r++){
+                for(let c=0; c<GRID_SIZE; c++){
+                    let tile = boardState[r][c];
+                    if(!tile) {
+                        tile = document.createElement('div');
+                        tile.classList.add('tile', 'empty');
+                        tile.onclick = () => {};
+                    } else {
+                        tile.onclick = () => moveTileByClick(tile);
+                    }
+                    boardElement.appendChild(tile);
+                }
+            }
+        }
+
+        function shuffleBoard() {
+            let moves = 150; // 3x3 不需要太多步
+            let lastMove = -1;
+            const interval = setInterval(() => {
+                const r = emptyTileIndex.row;
+                const c = emptyTileIndex.col;
+                const possibleMoves = [];
+                
+                if (r > 0 && lastMove !== 1) possibleMoves.push({r: r-1, c: c, dir: 0});
+                if (r < GRID_SIZE-1 && lastMove !== 0) possibleMoves.push({r: r+1, c: c, dir: 1});
+                if (c > 0 && lastMove !== 3) possibleMoves.push({r: r, c: c-1, dir: 2});
+                if (c < GRID_SIZE-1 && lastMove !== 2) possibleMoves.push({r: r, c: c+1, dir: 3});
+
+                if (possibleMoves.length === 0) return;
+                const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                
+                const tempTile = boardState[move.r][move.c];
+                boardState[move.r][move.c] = null;
+                boardState[r][c] = tempTile;
+                emptyTileIndex = { row: move.r, col: move.c };
+                lastMove = move.dir;
+
+                if (moves % 5 === 0) redrawBoard();
+                
+                moves--;
+                if (moves <= 0) {
+                    clearInterval(interval);
+                    redrawBoard();
+                }
+            }, 10); 
+        }
+
+        function checkWin() {
+            let correctCount = 0;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const tile = boardState[r][c];
+                    if (tile) {
+                        const targetId = parseInt(tile.dataset.id);
+                        const currentPosId = r * GRID_SIZE + c;
+                        if (targetId === currentPosId) correctCount++;
+                    }
+                }
+            }
+            
+            // 8片都對了
+            if (correctCount === (GRID_SIZE * GRID_SIZE) - 1) {
+                isSolved = true;
+                const emptyTile = document.querySelector('.tile.empty');
+                if(emptyTile) {
+                    emptyTile.classList.remove('empty');
+                    // 填入最後一塊圖片，位置是 100% 100% (右下角)
+                    emptyTile.style.backgroundImage = `url('${levels[currentLevel]}')`;
+                    emptyTile.style.backgroundPosition = '100% 100%'; 
+                }
+                
+                setTimeout(() => {
+                    launchConfetti();
+                    if (currentLevel < levels.length - 1) {
+                        victoryOverlay.classList.add('active');
+                    } else {
+                        finalCelebration.classList.add('active');
+                        launchBigConfetti();
+                    }
+                }, 300);
+            }
+        }
+
+        nextLevelBtn.onclick = () => {
+            currentLevel++;
+            initGame();
+        };
+
+        function launchConfetti() {
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+        }
+
+        function launchBigConfetti() {
+            var duration = 3000;
+            var end = Date.now() + duration;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
