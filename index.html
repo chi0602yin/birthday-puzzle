@@ -103,12 +103,8 @@
             pointer-events: none;
         }
 
-        /* ---------------------------------- */
-        /* 修正：勝利訊息移動到遊戲外並置中 */
-        /* ---------------------------------- */
-        
+        /* 勝利訊息移動到遊戲外並置中 */
         #victory-message {
-            /* 調整為非絕對定位，避免遮擋 */
             font-size: 1.5rem;
             font-weight: bold;
             color: var(--primary-color);
@@ -116,12 +112,12 @@
             padding: 10px 30px;
             border-radius: 5px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px; /* 放在遊戲區塊上方 */
-            display: none; /* 預設隱藏 */
+            margin-bottom: 20px; 
+            display: none; 
             text-align: center;
         }
         
-        /* 最終勝利畫面 (保持不變) */
+        /* 最終勝利畫面 */
         #final-celebration {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -172,8 +168,6 @@
         button.btn-love {
             background-color: var(--primary-color);
         }
-        
-        /* 移除多餘的 victory-overlay 樣式，因為它在 HTML 中已被移除 */
     </style>
 </head>
 <body>
@@ -182,7 +176,7 @@
     <p class="subtitle">將這些美好的回憶拼回來吧！</p>
     <div id="level-indicator">Level 1 / 5</div>
     
-    <div id="victory-message">✅ 完成！請點擊下一關 ➡️</div> 
+    <div id="victory-message">✅ 完成！請點擊按鈕繼續 ➡️</div> 
 
     <div class="game-container">
         <div id="puzzle-board">
@@ -191,6 +185,8 @@
     
     <button id="next-level-btn">進入下一關 ➡️</button>
 
+    <button id="final-end-btn">查看生日驚喜 💖</button> 
+    
     <div id="final-celebration">
         <h2>🎂 生日快樂！ 🎂</h2>
         <p>
@@ -209,7 +205,6 @@
     <script>
         const GRID_SIZE = 3; 
         
-        // 圖片網址保持不變
         const levels = [
             "https://i.postimg.cc/VL5gFMG7/1-png.png",
             "https://i.postimg.cc/gk5DtJ1w/2-png.png",
@@ -233,11 +228,13 @@
         const finalCelebration = document.getElementById('final-celebration');
         const nextLevelBtn = document.getElementById('next-level-btn');
         const victoryMessage = document.getElementById('victory-message'); 
+        const finalEndBtn = document.getElementById('final-end-btn'); // 🎯 新增: 取得結束按鈕
 
         function initGame() {
             // 重設狀態
-            nextLevelBtn.style.display = 'none'; // 隱藏按鈕
-            victoryMessage.style.display = 'none'; // 隱藏訊息
+            nextLevelBtn.style.display = 'none'; 
+            finalEndBtn.style.display = 'none';  // 🎯 確保隱藏
+            victoryMessage.style.display = 'none'; 
             
             isSolved = false;
             levelText.innerText = `Level ${currentLevel + 1} / ${levels.length}`;
@@ -397,14 +394,16 @@
                 
                 setTimeout(() => {
                     launchConfetti();
+                    
+                    // 檢查是否為最後一關
                     if (currentLevel < levels.length - 1) {
-                        // 顯示訊息和按鈕
+                        // 非最終關卡：顯示「下一關」
                         nextLevelBtn.style.display = 'block';
                         victoryMessage.style.display = 'block'; 
                     } else {
-                        // 最終關卡仍顯示完整的慶祝畫面
-                        finalCelebration.classList.add('active');
-                        launchBigConfetti();
+                        // 🎯 最終關卡：顯示「結束」按鈕，並停留在畫面
+                        finalEndBtn.style.display = 'block';
+                        victoryMessage.style.display = 'block';
                     }
                 }, 300);
             }
@@ -412,10 +411,15 @@
 
         nextLevelBtn.onclick = () => {
             currentLevel++;
-            // 點擊時隱藏按鈕和訊息
             nextLevelBtn.style.display = 'none'; 
             victoryMessage.style.display = 'none'; 
             initGame(); 
+        };
+        
+        // 🎯 新增: 結束按鈕的事件處理器
+        finalEndBtn.onclick = () => {
+             finalCelebration.classList.add('active');
+             launchBigConfetti();
         };
 
         function launchConfetti() {
