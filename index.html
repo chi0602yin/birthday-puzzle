@@ -214,7 +214,7 @@
         });
 
         let currentLevel = 0;
-        let boardState = []; 
+        let boardState = [];    
         let emptyTileIndex = { row: GRID_SIZE - 1, col: GRID_SIZE - 1 };
         let isSolved = false;
 
@@ -236,7 +236,7 @@
 
             createBoard();
             // 3x3 比較簡單，稍微打亂即可
-            setTimeout(shuffleBoard, 500); 
+            setTimeout(shuffleBoard, 500);  
         }
 
         function createBoard() {
@@ -263,6 +263,7 @@
                         tile.style.backgroundPosition = `${bgX}% ${bgY}%`;
                         boardState[row][col] = tile;
                     }
+                    // 在此階段先賦予點擊事件，在 redrawBoard 或 checkWin 中禁用
                     tile.onclick = () => moveTileByClick(tile); 
                     boardElement.appendChild(tile);
                 }
@@ -270,6 +271,7 @@
         }
         
         function moveTileByClick(tile) {
+            // 修正 1: 如果已經解開，則直接返回，不做任何操作
             if(isSolved || tile.classList.contains('empty')) return;
             
             let r, c;
@@ -287,6 +289,9 @@
         }
 
         function moveTile(row, col) {
+            // 修正 2: 如果已經解開，則直接返回，不做任何操作
+            if(isSolved) return; 
+
             const dRow = Math.abs(row - emptyTileIndex.row);
             const dCol = Math.abs(col - emptyTileIndex.col);
 
@@ -312,9 +317,17 @@
                     if(!tile) {
                         tile = document.createElement('div');
                         tile.classList.add('tile', 'empty');
-                        tile.onclick = () => {};
+                        // 修正 3: 如果遊戲未結束，才允許點擊
+                        if (!isSolved) {
+                            tile.onclick = () => {};
+                        }
                     } else {
-                        tile.onclick = () => moveTileByClick(tile);
+                        // 修正 4: 根據遊戲狀態設定點擊事件
+                        if (!isSolved) {
+                            tile.onclick = () => moveTileByClick(tile);
+                        } else {
+                            tile.onclick = null; // 勝利後禁止點擊
+                        }
                     }
                     boardElement.appendChild(tile);
                 }
@@ -369,18 +382,24 @@
             // 8片都對了
             if (correctCount === (GRID_SIZE * GRID_SIZE) - 1) {
                 isSolved = true;
+                
+                // 修正 5: 勝利時，重繪一次，確保所有碎片點擊都被禁用
+                redrawBoard(); 
+
                 const emptyTile = document.querySelector('.tile.empty');
                 if(emptyTile) {
                     emptyTile.classList.remove('empty');
                     // 填入最後一塊圖片，位置是 100% 100% (右下角)
                     emptyTile.style.backgroundImage = `url('${levels[currentLevel]}')`;
                     emptyTile.style.backgroundPosition = '100% 100%'; 
+                    emptyTile.onclick = null; // 確保最後一塊碎片也不可點擊
                 }
                 
                 setTimeout(() => {
                     launchConfetti();
                     if (currentLevel < levels.length - 1) {
-                        victoryOverlay.classList.add('active');
+                        // 顯示勝利覆蓋層，等待手動點擊
+                        victoryOverlay.classList.add('active'); 
                     } else {
                         finalCelebration.classList.add('active');
                         launchBigConfetti();
@@ -391,7 +410,7 @@
 
         nextLevelBtn.onclick = () => {
             currentLevel++;
-            initGame();
+            initGame(); // 手動點擊後才載入下一關
         };
 
         function launchConfetti() {
