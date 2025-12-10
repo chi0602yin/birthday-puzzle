@@ -80,13 +80,12 @@
             box-sizing: border-box;
             border-radius: 8px;
             overflow: hidden;
-            touch-action: none; /* 優化：防止手機滑動時頁面捲動 */
+            touch-action: none; 
         }
 
         .tile {
             width: 100%;
             height: 100%;
-            /* 計算背景圖大小，確保切圖正確 */
             background-size: calc(100% * var(--grid-size) + var(--grid-size) * 2px) calc(100% * var(--grid-size) + var(--grid-size) * 2px);
             background-repeat: no-repeat;
             cursor: pointer;
@@ -104,7 +103,25 @@
             pointer-events: none;
         }
 
-        /* 勝利畫面 */
+        /* ---------------------------------- */
+        /* 新增/修改：勝利時的訊息與按鈕樣式 */
+        /* ---------------------------------- */
+        
+        /* 1. 訊息樣式 */
+        #victory-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50; /* 在圖片上方 */
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px black;
+            display: none; /* 預設隱藏 */
+        }
+        
+        /* 2. 移除 overlay 的 pointer-events:all; 避免蓋住畫面 */
         #victory-overlay, #final-celebration {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -115,14 +132,14 @@
             justify-content: center;
             z-index: 100;
             opacity: 0;
-            pointer-events: none;
+            pointer-events: none; /* 讓它不蓋住點擊事件 */
             transition: opacity 0.5s ease;
             text-align: center;
             padding: 30px;
             box-sizing: border-box;
         }
 
-        #victory-overlay.active, #final-celebration.active {
+        #final-celebration.active {
             opacity: 1;
             pointer-events: all;
         }
@@ -133,12 +150,6 @@
             margin-bottom: 20px;
         }
         
-        #final-celebration p {
-            font-size: 1.2rem;
-            line-height: 1.8;
-            color: var(--text-color);
-        }
-
         button {
             background-color: var(--secondary-color);
             color: white;
@@ -150,6 +161,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             margin-top: 25px;
             font-weight: bold;
+            /* 3. 新增此樣式讓按鈕在 JS 執行前隱藏 */
+            display: none; 
         }
 
         button:hover {
@@ -170,15 +183,17 @@
     <div id="level-indicator">Level 1 / 5</div>
 
     <div class="game-container">
+        <div id="victory-message">✅ 完成！</div>
         <div id="puzzle-board">
             </div>
     </div>
+    
+    <button id="next-level-btn">進入下一關 ➡️</button>
 
     <div id="victory-overlay">
         <h2>🎉 成功解鎖！</h2>
         <p>太厲害了！<br>下一張回憶是什麼呢？</p>
-        <button id="next-level-btn">進入下一關 ➡️</button>
-    </div>
+        </div>
 
     <div id="final-celebration">
         <h2>🎂 生日快樂！ 🎂</h2>
@@ -196,9 +211,8 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <script>
-        const GRID_SIZE = 3; // 設定為 3x3
+        const GRID_SIZE = 3; 
         
-        // ⚠️⚠️⚠️ 請在這裡貼上你的圖片網址 ⚠️⚠️⚠️
         const levels = [
             "https://i.postimg.cc/VL5gFMG7/1-png.png",
             "https://i.postimg.cc/gk5DtJ1w/2-png.png",
@@ -207,7 +221,6 @@
             "https://i.postimg.cc/tCf5vT8Z/5-png.png"
         ];
 
-        // ✨ 優化：預先載入圖片功能，防止切換關卡時閃爍
         levels.forEach(url => {
             const img = new Image();
             img.src = url;
@@ -223,19 +236,22 @@
         const victoryOverlay = document.getElementById('victory-overlay');
         const finalCelebration = document.getElementById('final-celebration');
         const nextLevelBtn = document.getElementById('next-level-btn');
+        const victoryMessage = document.getElementById('victory-message'); // 新增取得訊息元素
 
         function initGame() {
+            // 重設狀態
             victoryOverlay.classList.remove('active');
+            nextLevelBtn.style.display = 'none'; // 隱藏按鈕
+            victoryMessage.style.display = 'none'; // 隱藏訊息
+            
             isSolved = false;
             levelText.innerText = `Level ${currentLevel + 1} / ${levels.length}`;
             
             if(levels[currentLevel].includes("在此貼上")) {
-                // 如果你的圖片網址貼錯，會跳出這個提醒
                 alert("⚠️ 寶貝提醒：請記得把圖片網址貼進程式碼裡面喔！不然會看不到圖");
             }
 
             createBoard();
-            // 3x3 比較簡單，稍微打亂即可
             setTimeout(shuffleBoard, 500);  
         }
 
@@ -263,7 +279,6 @@
                         tile.style.backgroundPosition = `${bgX}% ${bgY}%`;
                         boardState[row][col] = tile;
                     }
-                    // 在此階段先賦予點擊事件，在 redrawBoard 或 checkWin 中禁用
                     tile.onclick = () => moveTileByClick(tile); 
                     boardElement.appendChild(tile);
                 }
@@ -271,11 +286,9 @@
         }
         
         function moveTileByClick(tile) {
-            // 修正 1: 如果已經解開，則直接返回，不做任何操作
             if(isSolved || tile.classList.contains('empty')) return;
             
             let r, c;
-            // 尋找被點擊方塊的座標
             for(let row=0; row<GRID_SIZE; row++){
                 for(let col=0; col<GRID_SIZE; col++){
                     if(boardState[row][col] === tile) {
@@ -289,19 +302,16 @@
         }
 
         function moveTile(row, col) {
-            // 修正 2: 如果已經解開，則直接返回，不做任何操作
             if(isSolved) return; 
 
             const dRow = Math.abs(row - emptyTileIndex.row);
             const dCol = Math.abs(col - emptyTileIndex.col);
 
-            // 如果在空白格旁邊
             if (dRow + dCol === 1) {
                 const tempTile = boardState[row][col];
                 boardState[row][col] = null;
                 boardState[emptyTileIndex.row][emptyTileIndex.col] = tempTile;
                 
-                // 重繪
                 redrawBoard();
 
                 emptyTileIndex = { row: row, col: col };
@@ -317,12 +327,10 @@
                     if(!tile) {
                         tile = document.createElement('div');
                         tile.classList.add('tile', 'empty');
-                        // 修正 3: 如果遊戲未結束，才允許點擊
                         if (!isSolved) {
                             tile.onclick = () => {};
                         }
                     } else {
-                        // 修正 4: 根據遊戲狀態設定點擊事件
                         if (!isSolved) {
                             tile.onclick = () => moveTileByClick(tile);
                         } else {
@@ -335,7 +343,7 @@
         }
 
         function shuffleBoard() {
-            let moves = 150; // 3x3 不需要太多步
+            let moves = 150; 
             let lastMove = -1;
             const interval = setInterval(() => {
                 const r = emptyTileIndex.row;
@@ -379,28 +387,27 @@
                 }
             }
             
-            // 8片都對了
             if (correctCount === (GRID_SIZE * GRID_SIZE) - 1) {
                 isSolved = true;
                 
-                // 修正 5: 勝利時，重繪一次，確保所有碎片點擊都被禁用
                 redrawBoard(); 
 
                 const emptyTile = document.querySelector('.tile.empty');
                 if(emptyTile) {
                     emptyTile.classList.remove('empty');
-                    // 填入最後一塊圖片，位置是 100% 100% (右下角)
                     emptyTile.style.backgroundImage = `url('${levels[currentLevel]}')`;
                     emptyTile.style.backgroundPosition = '100% 100%'; 
-                    emptyTile.onclick = null; // 確保最後一塊碎片也不可點擊
+                    emptyTile.onclick = null; 
                 }
                 
                 setTimeout(() => {
                     launchConfetti();
                     if (currentLevel < levels.length - 1) {
-                        // 顯示勝利覆蓋層，等待手動點擊
-                        victoryOverlay.classList.add('active'); 
+                        // 🎯 關鍵修改 1: 顯示訊息和按鈕，取代 overlay
+                        nextLevelBtn.style.display = 'block';
+                        victoryMessage.style.display = 'block'; 
                     } else {
+                        // 最終關卡仍顯示完整的慶祝畫面
                         finalCelebration.classList.add('active');
                         launchBigConfetti();
                     }
@@ -410,7 +417,10 @@
 
         nextLevelBtn.onclick = () => {
             currentLevel++;
-            initGame(); // 手動點擊後才載入下一關
+            // 🎯 關鍵修改 2: 點擊時隱藏按鈕和訊息
+            nextLevelBtn.style.display = 'none'; 
+            victoryMessage.style.display = 'none'; 
+            initGame(); 
         };
 
         function launchConfetti() {
