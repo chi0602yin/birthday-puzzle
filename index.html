@@ -197,27 +197,13 @@
         button.btn-love {
             background-color: var(--primary-color);
         }
-        
-        /* YouTube 隱藏容器，保持一定大小以防被瀏覽器忽略 */
-        #youtube-container {
-            position: fixed;
-            bottom: -500px;
-            left: 0;
-            width: 200px;
-            height: 200px;
-            opacity: 0.1; /* 不能完全透明，否則有些瀏覽器不執行 */
-            pointer-events: none;
-            z-index: -999;
-        }
     </style>
 </head>
 <body>
 
     <audio id="snap-sound" src="https://www.soundjay.com/buttons/sounds/button-3.mp3" preload="auto"></audio>
     
-    <div id="youtube-container">
-        <div id="youtube-bgm"></div>
-    </div>
+    <audio id="bgm" src="happy-birthday-guitar-instrumental.mp3" loop preload="auto"></audio>
 
     <h1>🧩 生日拼圖大挑戰</h1>
     <p class="subtitle">將這些美好的回憶拼回來吧！</p>
@@ -243,54 +229,11 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        // --------------- YouTube 背景音樂 (終極暖身版) ---------------
-        var player;
-        var isPlayerReady = false;
-        const YOUTUBE_VIDEO_ID = '1GWKhpN1KyA';
-
-        function onYouTubeIframeAPIReady() {
-            player = new YT.Player('youtube-bgm', {
-                height: '200', 
-                width: '200',
-                videoId: YOUTUBE_VIDEO_ID,
-                playerVars: {
-                    'autoplay': 0, 
-                    'loop': 1,           
-                    'playlist': YOUTUBE_VIDEO_ID, 
-                    'controls': 0,       
-                    'showinfo': 0,
-                    'playsinline': 1,
-                    'origin': window.location.origin
-                },
-                events: {
-                    'onReady': onPlayerReady
-                }
-            });
-        }
-
-        function onPlayerReady(event) {
-            isPlayerReady = true;
-            event.target.mute(); // 一開始先靜音
-            console.log("YouTube Player Ready");
-        }
-
-        // ⚠️ 關鍵技術：點擊任意處進行「暖身」
-        // 當使用者第一次點擊網頁任何地方（例如開始玩拼圖）時，我們偷偷讓影片播一下
-        document.body.addEventListener('click', function() {
-            if (isPlayerReady && player && player.getPlayerState() !== 1) {
-                // 偷播一下，騙過瀏覽器
-                player.playVideo();
-                // 0.5秒後馬上暫停 (使用者聽不到因為是靜音的)
-                setTimeout(() => {
-                    player.pauseVideo();
-                }, 500);
-            }
-        }, { once: true }); // 只執行一次
-
-        // ----------------------------------------------------
+        // 取得音樂元素
+        const bgm = document.getElementById('bgm');
+        const snapSound = document.getElementById('snap-sound');
 
         // --------------- 打字機特效設定 ---------------
         const finalMessages = [
@@ -309,8 +252,8 @@
             
             let lineIndex = 0;
             let charIndex = 0;
-            const typingSpeed = 150; 
-            const linePause = 800;   
+            const typingSpeed = 150; // 打字速度
+            const linePause = 800;   // 換行停頓
 
             function typeChar() {
                 if (lineIndex < finalMessages.length) {
@@ -372,7 +315,6 @@
         const nextLevelBtn = document.getElementById('next-level-btn');
         const victoryMessage = document.getElementById('victory-message'); 
         const finalEndBtn = document.getElementById('final-end-btn'); 
-        const snapSound = document.getElementById('snap-sound'); 
 
         function initGame() {
             nextLevelBtn.style.display = 'none'; 
@@ -575,20 +517,15 @@
             initGame(); 
         };
         
-        // 🎯 點擊查看驚喜：解開靜音 + 播放
+        // 🎯 點擊查看驚喜：直接播放 MP3 檔案
         finalEndBtn.onclick = () => {
              finalCelebration.classList.add('active');
              launchBigConfetti();
              
-             if(isPlayerReady && player) {
-                try {
-                    player.unMute();      // 1. 解開靜音
-                    player.setVolume(70); // 2. 設定音量
-                    player.seekTo(0);     // 3. 回到開頭
-                    player.playVideo();   // 4. 正式播放
-                } catch(e) {
-                    console.log("Error playing video:", e);
-                }
+             // 播放背景音樂 (因為是按鈕觸發，瀏覽器會允許)
+             if(bgm) {
+                 bgm.volume = 0.6; // 音量 60%
+                 bgm.play().catch(e => console.log("播放失敗", e));
              }
 
              typeWriter();
