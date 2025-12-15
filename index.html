@@ -10,7 +10,7 @@
             --secondary-color: #4ECDC4;
             --bg-color: #f7f9fc;
             --text-color: #2d3436;
-            --grid-size: 3; /* 改成 3x3 */
+            --grid-size: 3; 
         }
 
         body {
@@ -103,21 +103,20 @@
             pointer-events: none;
         }
 
-        /* 勝利訊息移動到遊戲外並置中 */
         #victory-message {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: bold;
             color: var(--primary-color);
             background: white;
-            padding: 10px 30px;
-            border-radius: 5px;
+            padding: 15px 20px;
+            border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             margin-bottom: 20px; 
             display: none; 
             text-align: center;
+            line-height: 1.5;
         }
         
-        /* 最終勝利畫面 */
         #final-celebration {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -155,7 +154,7 @@
             border-radius: 50px;
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-top: 25px;
+            margin-top: 10px;
             font-weight: bold;
             display: none; 
         }
@@ -172,11 +171,13 @@
 </head>
 <body>
 
+    <audio id="snap-sound" src="pop.mp3" preload="auto"></audio>
+
     <h1>🧩 生日拼圖大挑戰</h1>
     <p class="subtitle">將這些美好的回憶拼回來吧！</p>
     <div id="level-indicator">Level 1 / 5</div>
     
-    <div id="victory-message">✅ 完成！請點擊按鈕繼續 ➡️</div> 
+    <div id="victory-message"></div> 
 
     <div class="game-container">
         <div id="puzzle-board">
@@ -197,7 +198,7 @@
             <br>
             <strong>永遠愛你！💖</strong>
         </p>
-        <button class="btn-love" onclick="location.reload()">再玩一次 🔄</button>
+        <button class="btn-love" onclick="location.reload()" style="display:inline-block;">再玩一次 🔄</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -222,29 +223,41 @@
         let boardState = [];    
         let emptyTileIndex = { row: GRID_SIZE - 1, col: GRID_SIZE - 1 };
         let isSolved = false;
+        
+        // ⏱️ 計時器變數
+        let startTime;
 
         const boardElement = document.getElementById('puzzle-board');
         const levelText = document.getElementById('level-indicator');
         const finalCelebration = document.getElementById('final-celebration');
         const nextLevelBtn = document.getElementById('next-level-btn');
         const victoryMessage = document.getElementById('victory-message'); 
-        const finalEndBtn = document.getElementById('final-end-btn'); // 🎯 新增: 取得結束按鈕
+        const finalEndBtn = document.getElementById('final-end-btn'); 
+        const snapSound = document.getElementById('snap-sound'); // 🎵 取得音效元素
 
         function initGame() {
-            // 重設狀態
+            // 重設介面
             nextLevelBtn.style.display = 'none'; 
-            finalEndBtn.style.display = 'none';  // 🎯 確保隱藏
+            finalEndBtn.style.display = 'none'; 
             victoryMessage.style.display = 'none'; 
             
             isSolved = false;
             levelText.innerText = `Level ${currentLevel + 1} / ${levels.length}`;
             
-            if(levels[currentLevel].includes("在此貼上")) {
-                alert("⚠️ 寶貝提醒：請記得把圖片網址貼進程式碼裡面喔！不然會看不到圖");
-            }
-
             createBoard();
-            setTimeout(shuffleBoard, 500);  
+            setTimeout(() => {
+                shuffleBoard();
+                // ⏱️ 洗牌後開始計時
+                startTime = Date.now();
+            }, 500);  
+        }
+
+        // 🎵 播放音效的函式
+        function playSnapSound() {
+            if(snapSound) {
+                snapSound.currentTime = 0; // 每次從頭播放
+                snapSound.play().catch(e => console.log("Audio play failed (interaction needed first)"));
+            }
         }
 
         function createBoard() {
@@ -304,6 +317,9 @@
                 boardState[row][col] = null;
                 boardState[emptyTileIndex.row][emptyTileIndex.col] = tempTile;
                 
+                // 🎵 拼圖移動成功（歸位到空格）時播放音效
+                playSnapSound();
+
                 redrawBoard();
 
                 emptyTileIndex = { row: row, col: col };
@@ -326,7 +342,7 @@
                         if (!isSolved) {
                             tile.onclick = () => moveTileByClick(tile);
                         } else {
-                            tile.onclick = null; // 勝利後禁止點擊
+                            tile.onclick = null; 
                         }
                     }
                     boardElement.appendChild(tile);
@@ -382,6 +398,10 @@
             if (correctCount === (GRID_SIZE * GRID_SIZE) - 1) {
                 isSolved = true;
                 
+                // ⏱️ 計算花費時間
+                const endTime = Date.now();
+                const timeSpent = Math.floor((endTime - startTime) / 1000);
+
                 redrawBoard(); 
 
                 const emptyTile = document.querySelector('.tile.empty');
@@ -395,13 +415,13 @@
                 setTimeout(() => {
                     launchConfetti();
                     
-                    // 檢查是否為最後一關
+                    // ⏱️ 更新勝利訊息，顯示時間
+                    victoryMessage.innerHTML = `✨ 完成！你花了 <strong>${timeSpent}</strong> 秒找回這段回憶 ✨`;
+                    
                     if (currentLevel < levels.length - 1) {
-                        // 非最終關卡：顯示「下一關」
                         nextLevelBtn.style.display = 'block';
                         victoryMessage.style.display = 'block'; 
                     } else {
-                        // 🎯 最終關卡：顯示「結束」按鈕，並停留在畫面
                         finalEndBtn.style.display = 'block';
                         victoryMessage.style.display = 'block';
                     }
@@ -416,7 +436,6 @@
             initGame(); 
         };
         
-        // 🎯 新增: 結束按鈕的事件處理器
         finalEndBtn.onclick = () => {
              finalCelebration.classList.add('active');
              launchBigConfetti();
