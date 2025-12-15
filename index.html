@@ -60,17 +60,6 @@
             gap: 10px;
         }
 
-        /* 音樂控制按鈕樣式 */
-        #music-control {
-            font-size: 1rem;
-            cursor: pointer;
-            background: none;
-            border: none;
-            padding: 0;
-            margin-left: 10px;
-            opacity: 0.7;
-        }
-
         .game-container {
             background: white;
             padding: 15px;
@@ -158,6 +147,18 @@
             font-size: 2.2rem;
             margin-bottom: 20px;
         }
+
+        /* 打字機文字樣式 */
+        #final-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #555;
+            min-height: 150px; /* 預留高度避免跳動 */
+            margin-bottom: 20px;
+            text-align: left; /* 文字靠左比較像打字，若想置中可改 center */
+            display: inline-block;
+            max-width: 90%;
+        }
         
         button {
             background-color: var(--secondary-color);
@@ -194,7 +195,6 @@
     
     <div id="level-indicator">
         <span id="level-text">Level 1 / 5</span>
-        <button id="music-control" onclick="toggleMusic()" style="display:inline-block;">🔇</button>
     </div>
     
     <div id="victory-message"></div> 
@@ -208,15 +208,9 @@
     
     <div id="final-celebration">
         <h2>🎂 生日快樂！ 🎂</h2>
-        <p>
-            所有的拼圖都完成了！<br>
-            你擁有很多美好的畫面跟回憶。<br>
-            你的故事很長，而我希望未來的篇章，都能和你一起寫。<br>
-            生日快樂，我的男孩！願你一直快樂，一直自由。<br>
-            <br>
-            <strong>永遠愛你！💖</strong>
-        </p>
-        <button class="btn-love" onclick="location.reload()" style="display:inline-block;">再玩一次 🔄</button>
+        <div id="final-text"></div>
+        
+        <button id="replay-btn" class="btn-love" onclick="location.reload()" style="display:none;">再玩一次 🔄</button>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -225,7 +219,6 @@
     <script>
         // --------------- YouTube 背景音樂設定 ---------------
         var player;
-        var isMusicPlaying = false;
         const YOUTUBE_VIDEO_ID = '1GWKhpN1KyA'; // 你選的音樂
 
         function onYouTubeIframeAPIReady() {
@@ -234,10 +227,10 @@
                 width: '0',
                 videoId: YOUTUBE_VIDEO_ID,
                 playerVars: {
-                    'autoplay': 1,       // 嘗試自動播放
-                    'loop': 1,           // 循環播放
-                    'playlist': YOUTUBE_VIDEO_ID, // 循環必須設定 playlist = video_id
-                    'controls': 0,       // 隱藏控制列
+                    'autoplay': 0,       // ⚠️ 這裡改成 0，一開始不播
+                    'loop': 1,           
+                    'playlist': YOUTUBE_VIDEO_ID, 
+                    'controls': 0,       
                     'showinfo': 0
                 },
                 events: {
@@ -247,37 +240,57 @@
         }
 
         function onPlayerReady(event) {
-            // 設定音量 (30% 比較適合作為背景音樂)
-            event.target.setVolume(30); 
-            // 嘗試播放
-            event.target.playVideo();
+            event.target.setVolume(40); // 音量設定
         }
 
-        // 音樂開關按鈕功能
-        function toggleMusic() {
-            const btn = document.getElementById('music-control');
-            if (player && player.getPlayerState) {
-                if (isMusicPlaying) {
-                    player.pauseVideo();
-                    btn.innerText = "🔇"; // 靜音圖示
-                    isMusicPlaying = false;
+        // ----------------------------------------------------
+
+        // --------------- 打字機特效設定 ---------------
+        const finalMessages = [
+            "所有的拼圖都完成了！",
+            "你擁有很多美好的畫面跟回憶。",
+            "你的故事很長，而我希望未來的篇章，都能和你一起寫。",
+            "生日快樂，我的男孩！願你一直快樂，一直自由。"
+        ];
+
+        function typeWriter() {
+            const container = document.getElementById("final-text");
+            const replayBtn = document.getElementById("replay-btn");
+            container.innerHTML = ""; // 清空
+            
+            let lineIndex = 0;
+            let charIndex = 0;
+            const typingSpeed = 100; // 打字速度 (毫秒)
+            const linePause = 600;   // 換行停頓 (毫秒)
+
+            function typeChar() {
+                if (lineIndex < finalMessages.length) {
+                    // 如果這行還沒打完
+                    if (charIndex < finalMessages[lineIndex].length) {
+                        container.innerHTML += finalMessages[lineIndex].charAt(charIndex);
+                        charIndex++;
+                        setTimeout(typeChar, typingSpeed);
+                    } else {
+                        // 這行打完了，換行
+                        container.innerHTML += "<br>";
+                        lineIndex++;
+                        charIndex = 0;
+                        setTimeout(typeChar, linePause);
+                    }
                 } else {
-                    player.playVideo();
-                    btn.innerText = "🔊"; // 播放圖示
-                    isMusicPlaying = true;
+                    // 全部文字打完後，顯示最後的「永遠愛你」
+                    setTimeout(() => {
+                        container.innerHTML += "<br><strong style='font-size:1.3rem; color: #FF6B6B;'>永遠愛你！💖</strong>";
+                        
+                        // 顯示再玩一次按鈕
+                        setTimeout(() => {
+                            replayBtn.style.display = "inline-block";
+                        }, 500);
+                    }, 500);
                 }
             }
+            typeChar(); // 開始打字
         }
-
-        // 監聽第一次點擊：為了解決瀏覽器阻擋自動播放的問題
-        document.body.addEventListener('click', function() {
-            if (player && !isMusicPlaying) {
-                player.playVideo();
-                isMusicPlaying = true;
-                document.getElementById('music-control').innerText = "🔊";
-            }
-        }, { once: true }); // 只執行一次
-
         // ----------------------------------------------------
 
         const GRID_SIZE = 3; 
@@ -327,7 +340,7 @@
         function playSnapSound() {
             if(snapSound) {
                 snapSound.currentTime = 0; 
-                snapSound.play().catch(e => { console.log("音效播放需要互動"); });
+                snapSound.play().catch(e => { console.log("等待互動"); });
             }
         }
 
@@ -385,19 +398,16 @@
 
             if (dRow + dCol === 1) {
                 const tempTile = boardState[row][col];
-
-                // --- 🎯 新增的邏輯：檢查是否拼到正確位置 ---
+                
+                // 檢查是否歸位正確
                 const targetId = parseInt(tempTile.dataset.id);
-                // 拼圖現在要移動到的目標位置 (就是原本的空格位置)
                 const newRow = emptyTileIndex.row;
                 const newCol = emptyTileIndex.col;
                 const newPosId = newRow * GRID_SIZE + newCol;
 
-                // 只有當「拼圖原本的ID」等於「新位置的ID」時 (代表歸位正確)，才播放音效
                 if (targetId === newPosId) {
                     playSnapSound();
                 }
-                // ------------------------------------------
 
                 boardState[row][col] = null;
                 boardState[emptyTileIndex.row][emptyTileIndex.col] = tempTile;
@@ -514,9 +524,18 @@
             initGame(); 
         };
         
+        // 🎯 這裡最重要：點擊「查看生日驚喜」後才開始播音樂 + 打字
         finalEndBtn.onclick = () => {
              finalCelebration.classList.add('active');
              launchBigConfetti();
+             
+             // 1. 開始播音樂
+             if(player && player.playVideo) {
+                player.playVideo();
+             }
+
+             // 2. 開始打字特效
+             typeWriter();
         };
 
         function launchConfetti() {
@@ -524,7 +543,7 @@
         }
 
         function launchBigConfetti() {
-            var duration = 3000;
+            var duration = 5000; // 慶祝時間拉長一點
             var end = Date.now() + duration;
             (function frame() {
                 confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
