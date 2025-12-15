@@ -55,6 +55,20 @@
             padding: 8px 25px;
             border-radius: 20px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 音樂控制按鈕樣式 */
+        #music-control {
+            font-size: 1rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            margin-left: 10px;
+            opacity: 0.7;
         }
 
         .game-container {
@@ -172,20 +186,24 @@
 <body>
 
     <audio id="snap-sound" src="pop.mp3" preload="auto"></audio>
+    
+    <div id="youtube-bgm" style="display:none;"></div>
 
     <h1>🧩 生日拼圖大挑戰</h1>
     <p class="subtitle">將這些美好的回憶拼回來吧！</p>
-    <div id="level-indicator">Level 1 / 5</div>
+    
+    <div id="level-indicator">
+        <span id="level-text">Level 1 / 5</span>
+        <button id="music-control" onclick="toggleMusic()" style="display:inline-block;">🔇</button>
+    </div>
     
     <div id="victory-message"></div> 
 
     <div class="game-container">
-        <div id="puzzle-board">
-            </div>
+        <div id="puzzle-board"></div>
     </div>
     
     <button id="next-level-btn">進入下一關 ➡️</button>
-
     <button id="final-end-btn">查看生日驚喜 💖</button> 
     
     <div id="final-celebration">
@@ -202,8 +220,66 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
+        // --------------- YouTube 背景音樂設定 ---------------
+        var player;
+        var isMusicPlaying = false;
+        const YOUTUBE_VIDEO_ID = '1GWKhpN1KyA'; // 你選的音樂
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-bgm', {
+                height: '0',
+                width: '0',
+                videoId: YOUTUBE_VIDEO_ID,
+                playerVars: {
+                    'autoplay': 1,       // 嘗試自動播放
+                    'loop': 1,           // 循環播放
+                    'playlist': YOUTUBE_VIDEO_ID, // 循環必須設定 playlist = video_id
+                    'controls': 0,       // 隱藏控制列
+                    'showinfo': 0
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            // 設定音量 (30% 比較適合作為背景音樂)
+            event.target.setVolume(30); 
+            // 嘗試播放
+            event.target.playVideo();
+        }
+
+        // 音樂開關按鈕功能
+        function toggleMusic() {
+            const btn = document.getElementById('music-control');
+            if (player && player.getPlayerState) {
+                if (isMusicPlaying) {
+                    player.pauseVideo();
+                    btn.innerText = "🔇"; // 靜音圖示
+                    isMusicPlaying = false;
+                } else {
+                    player.playVideo();
+                    btn.innerText = "🔊"; // 播放圖示
+                    isMusicPlaying = true;
+                }
+            }
+        }
+
+        // 監聽第一次點擊：為了解決瀏覽器阻擋自動播放的問題
+        document.body.addEventListener('click', function() {
+            if (player && !isMusicPlaying) {
+                player.playVideo();
+                isMusicPlaying = true;
+                document.getElementById('music-control').innerText = "🔊";
+            }
+        }, { once: true }); // 只執行一次
+
+        // ----------------------------------------------------
+
         const GRID_SIZE = 3; 
         
         const levels = [
@@ -223,20 +299,17 @@
         let boardState = [];    
         let emptyTileIndex = { row: GRID_SIZE - 1, col: GRID_SIZE - 1 };
         let isSolved = false;
-        
-        // ⏱️ 計時器變數
         let startTime;
 
         const boardElement = document.getElementById('puzzle-board');
-        const levelText = document.getElementById('level-indicator');
+        const levelText = document.getElementById('level-text');
         const finalCelebration = document.getElementById('final-celebration');
         const nextLevelBtn = document.getElementById('next-level-btn');
         const victoryMessage = document.getElementById('victory-message'); 
         const finalEndBtn = document.getElementById('final-end-btn'); 
-        const snapSound = document.getElementById('snap-sound'); // 🎵 取得音效元素
+        const snapSound = document.getElementById('snap-sound'); 
 
         function initGame() {
-            // 重設介面
             nextLevelBtn.style.display = 'none'; 
             finalEndBtn.style.display = 'none'; 
             victoryMessage.style.display = 'none'; 
@@ -247,16 +320,14 @@
             createBoard();
             setTimeout(() => {
                 shuffleBoard();
-                // ⏱️ 洗牌後開始計時
                 startTime = Date.now();
             }, 500);  
         }
 
-        // 🎵 播放音效的函式
         function playSnapSound() {
             if(snapSound) {
-                snapSound.currentTime = 0; // 每次從頭播放
-                snapSound.play().catch(e => console.log("Audio play failed (interaction needed first)"));
+                snapSound.currentTime = 0; 
+                snapSound.play().catch(e => {});
             }
         }
 
@@ -317,7 +388,6 @@
                 boardState[row][col] = null;
                 boardState[emptyTileIndex.row][emptyTileIndex.col] = tempTile;
                 
-                // 🎵 拼圖移動成功（歸位到空格）時播放音效
                 playSnapSound();
 
                 redrawBoard();
@@ -397,8 +467,6 @@
             
             if (correctCount === (GRID_SIZE * GRID_SIZE) - 1) {
                 isSolved = true;
-                
-                // ⏱️ 計算花費時間
                 const endTime = Date.now();
                 const timeSpent = Math.floor((endTime - startTime) / 1000);
 
@@ -414,8 +482,6 @@
                 
                 setTimeout(() => {
                     launchConfetti();
-                    
-                    // ⏱️ 更新勝利訊息，顯示時間
                     victoryMessage.innerHTML = `✨ 完成！你花了 <strong>${timeSpent}</strong> 秒找回這段回憶 ✨`;
                     
                     if (currentLevel < levels.length - 1) {
