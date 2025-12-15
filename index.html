@@ -185,7 +185,7 @@
 </head>
 <body>
 
-    <audio id="snap-sound" src="pop.mp3" preload="auto"></audio>
+    <audio id="snap-sound" src="https://www.soundjay.com/buttons/sounds/button-3.mp3" preload="auto"></audio>
     
     <div id="youtube-bgm" style="display:none;"></div>
 
@@ -327,7 +327,7 @@
         function playSnapSound() {
             if(snapSound) {
                 snapSound.currentTime = 0; 
-                snapSound.play().catch(e => {});
+                snapSound.play().catch(e => { console.log("音效播放需要互動"); });
             }
         }
 
@@ -385,11 +385,23 @@
 
             if (dRow + dCol === 1) {
                 const tempTile = boardState[row][col];
+
+                // --- 🎯 新增的邏輯：檢查是否拼到正確位置 ---
+                const targetId = parseInt(tempTile.dataset.id);
+                // 拼圖現在要移動到的目標位置 (就是原本的空格位置)
+                const newRow = emptyTileIndex.row;
+                const newCol = emptyTileIndex.col;
+                const newPosId = newRow * GRID_SIZE + newCol;
+
+                // 只有當「拼圖原本的ID」等於「新位置的ID」時 (代表歸位正確)，才播放音效
+                if (targetId === newPosId) {
+                    playSnapSound();
+                }
+                // ------------------------------------------
+
                 boardState[row][col] = null;
                 boardState[emptyTileIndex.row][emptyTileIndex.col] = tempTile;
                 
-                playSnapSound();
-
                 redrawBoard();
 
                 emptyTileIndex = { row: row, col: col };
